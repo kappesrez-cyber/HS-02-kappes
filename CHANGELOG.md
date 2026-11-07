@@ -10,7 +10,7 @@ All notable changes of **HS-02 Modern UI** (on top of [MYMDO/IronOS-FNIRSI-HS-02
     default 30 s) the standby GIF plays full screen. Any button or motion returns to standby (the dismissing press is
     swallowed); never shown while the tip is above 50 °C, on a tip fault or below 9 V;
   - **boot animation** instead of the boot splash (one loop, 1.5–8 s, a button skips it; *System → Boot GIF*).
-- **GIF web constructor** (`tools/hs02-gif-studio`, deployed to GitHub Pages by CI): load a GIF, crop it to 160×80
+- **GIF web constructor** (`tools/hs02-gif-studio`, deployed to GitHub Pages by CI): load a GIF or a short video (MP4 / WebM / MOV, decoded by the browser: start, length and fps), crop it to 160×80
   (fit / fill / free), set speed, frame range and border colour, see exactly what the iron will show and download a
   patched `.bin`. The GIFs are appended after the firmware image as a CRC-checked container (4 colours per 4-row band,
   RLE, XOR against frame 0); the firmware finds it through the `HS02SLOT` record and the `_hs02_assets_start` linker

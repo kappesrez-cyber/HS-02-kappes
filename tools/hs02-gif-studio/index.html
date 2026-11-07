@@ -112,7 +112,7 @@ kbd { font-family: var(--font-data); font-size: 12px; background: var(--sunken);
   <header>
     <span class="label">FNIRSI HS-02A · HS-02B · Modern UI</span>
     <h1>HS-02 GIF Studio</h1>
-    <p>Загрузи свои GIF, выбери область кадра и получи готовую прошивку: одна анимация играет заставкой в режиме ожидания, другая при включении. Всё считается прямо в браузере, файлы никуда не отправляются.</p>
+    <p>Загрузи свои GIF или короткие видео (MP4, WebM, MOV), выбери область кадра и получи готовую прошивку: одна анимация играет заставкой в режиме ожидания, другая при включении. Всё считается прямо в браузере, файлы никуда не отправляются.</p>
   </header>
 
   <section class="panel" aria-labelledby="fw-title">
@@ -162,8 +162,8 @@ kbd { font-family: var(--font-data); font-size: 12px; background: var(--sunken);
     <div class="slot-head">
       <h2 class="slot-title"></h2>
       <div class="row">
-        <label class="btn">Загрузить GIF<input type="file" accept="image/gif" class="gif-file"></label>
-        <button type="button" class="btn copy-other" hidden>Взять GIF из заставки</button>
+        <label class="btn">Загрузить GIF или видео<input type="file" accept="image/gif,video/mp4,video/webm,video/quicktime,.gif,.mp4,.m4v,.webm,.mov" class="gif-file"></label>
+        <button type="button" class="btn copy-other" hidden>Взять из заставки</button>
         <button type="button" class="btn clear" hidden>Убрать</button>
       </div>
     </div>
@@ -172,7 +172,7 @@ kbd { font-family: var(--font-data); font-size: 12px; background: var(--sunken);
       <div class="editor">
         <div class="stage">
           <canvas class="crop" aria-label="Область кадра: перетащи рамку или её угол"></canvas>
-          <div class="drop">Перетащи GIF сюда<br>или нажми «Загрузить GIF»</div>
+          <div class="drop">Перетащи сюда GIF или видео (MP4, WebM, MOV)<br>или нажми «Загрузить GIF или видео»</div>
         </div>
         <div class="row">
           <div class="seg" role="group" aria-label="Область">
@@ -180,6 +180,13 @@ kbd { font-family: var(--font-data); font-size: 12px; background: var(--sunken);
             <button type="button" data-fit="cover" aria-pressed="false">Заполнить</button>
             <button type="button" data-fit="free" aria-pressed="false">Свободно</button>
           </div>
+        </div>
+        <div class="controls video-controls" hidden>
+          <label>Начало видео, с <input type="number" class="v-start" min="0" step="0.1" value="0"></label>
+          <label>Длина, с <input type="number" class="v-length" min="0.2" max="20" step="0.1" value="4"></label>
+          <label>Кадров в секунду
+            <select class="v-fps"><option>5</option><option>8</option><option selected>10</option><option>12</option><option>15</option><option>20</option><option>25</option></select>
+          </label>
         </div>
         <div class="controls">
           <label>Кадр в редакторе <input type="range" class="scrub" min="0" max="0" value="0"></label>
@@ -212,6 +219,54 @@ import {
 const $ = (sel, root = document) => root.querySelector(sel);
 const kb = (n) => (n / 1024).toFixed(1).replace(".", ",") + " КБ";
 const MAX_FRAMES = 200;
+const VIDEO_MAX_SIDE = 480; // video frames are scaled down to this before cropping, to keep memory in check
+const isVideo = (f) => /^video\//.test(f.type) || /\.(mp4|m4v|webm|mov)$/i.test(f.name);
+
+// Seeks a <video> and waits until the frame at t is ready to draw.
+function seekVideo(v, t) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => { cleanup(); reject(new Error("Видео не перематывается. Попробуйте другой файл.")); }, 8000);
+    const done = () => { cleanup(); resolve(); };
+    const cleanup = () => { clearTimeout(timer); v.removeEventListener("seeked", done); };
+    v.addEventListener("seeked", done);
+    v.currentTime = t;
+  });
+}
+
+// Opens a video file in the browser's own decoder and resolves with the <video> element once a frame is ready.
+function openVideo(url) {
+  return new Promise((resolve, reject) => {
+    const v = document.createElement("video");
+    v.muted = true; v.playsInline = true; v.preload = "auto";
+    v.addEventListener("loadeddata", () => resolve(v), { once: true });
+    v.addEventListener("error", () => reject(new Error("Браузер не смог открыть это видео. Подойдёт MP4 (H.264) или WebM.")), { once: true });
+    v.src = url;
+    v.load();
+  });
+}
+
+// Grabs frames [start, start + length) at fps into the same shape decodeGif returns.
+async function decodeVideo(v, { start, length, fps, cancelled }, onProgress) {
+  const dur = v.duration;
+  if (!(dur > 0) || !v.videoWidth) throw new Error("В файле нет видеодорожки.");
+  const scale = Math.min(1, VIDEO_MAX_SIDE / Math.max(v.videoWidth, v.videoHeight));
+  const width = Math.max(1, Math.round(v.videoWidth * scale)), height = Math.max(1, Math.round(v.videoHeight * scale));
+  const cv = document.createElement("canvas");
+  cv.width = width; cv.height = height;
+  const ctx = cv.getContext("2d", { willReadFrequently: true });
+  const s0 = Math.max(0, Math.min(start, dur - 0.05));
+  const n = Math.max(1, Math.min(MAX_FRAMES, Math.round(Math.min(length, dur - s0) * fps)));
+  const frames = [];
+  for (let i = 0; i < n; i++) {
+    if (cancelled()) return null;
+    await seekVideo(v, Math.min(s0 + i / fps, dur - 0.02));
+    if (cancelled()) return null;
+    ctx.drawImage(v, 0, 0, width, height);
+    frames.push({ rgba: ctx.getImageData(0, 0, width, height).data, delayMs: 1000 / fps });
+    onProgress(i + 1, n);
+  }
+  return { width, height, frames };
+}
 
 // ---------------------------------------------------------------- firmware
 const fw = { model: "HS02A", lang: "RU", parsed: null, name: "HS02A_RU.bin", custom: false };
@@ -308,7 +363,7 @@ class Slot {
       const f = e.dataTransfer.files[0];
       if (f) await this.loadFile(f);
     });
-    $(".clear", el).addEventListener("click", () => { this.gif = null; this.keep = null; this.encoded = null; this.update(); });
+    $(".clear", el).addEventListener("click", () => { this.dropVideo(); this.gif = null; this.keep = null; this.encoded = null; this.update(); });
     for (const b of el.querySelectorAll("[data-fit]")) {
       b.addEventListener("click", () => {
         press(b, "[data-fit]");
@@ -317,6 +372,7 @@ class Slot {
         this.changed();
       });
     }
+    for (const c of [".v-start", ".v-length", ".v-fps"]) $(c, el).addEventListener("change", () => this.grabVideo(true));
     $(".scrub", el).addEventListener("input", () => this.drawEditor());
     for (const c of [".speed", ".from", ".to", ".smooth"]) $(c, el).addEventListener("change", () => this.changed());
     $(".bg", el).addEventListener("input", () => { $(".bg-hex", el).textContent = $(".bg", el).value; this.changed(); });
@@ -324,12 +380,75 @@ class Slot {
   }
 
   async loadFile(file, gifOverride) {
+    this.dropVideo();
+    if (file && isVideo(file)) return this.loadVideo(file);
     try {
       this.gif = gifOverride || decodeGif(new Uint8Array(await file.arrayBuffer()));
     } catch (e) {
       this.facts(e.message, true);
       return;
     }
+    this.sourceReady();
+  }
+
+  dropVideo() {
+    if (this.video) URL.revokeObjectURL(this.video.src);
+    this.video = null;
+    this.videoJob = (this.videoJob || 0) + 1; // cancels a grab in progress
+    $(".video-controls", this.el).hidden = true;
+  }
+
+  async loadVideo(file) {
+    this.facts("Открываю видео…");
+    const job = this.videoJob, url = URL.createObjectURL(file);
+    let video;
+    try {
+      video = await openVideo(url);
+    } catch (e) {
+      URL.revokeObjectURL(url);
+      if (job === this.videoJob) this.facts(e.message, true);
+      return;
+    }
+    if (job !== this.videoJob) { URL.revokeObjectURL(url); return; } // another file was picked meanwhile
+    this.video = video;
+    const dur = this.video.duration;
+    Object.assign($(".v-start", this.el), { value: 0, max: Math.max(0, Math.floor(dur * 10) / 10) });
+    $(".v-length", this.el).value = String(Math.min(4, Math.round(dur * 10) / 10) || 4);
+    $(".video-controls", this.el).hidden = false;
+    await this.grabVideo(false);
+  }
+
+  // Re-reads frames from the open video with the current start/length/fps.
+  async grabVideo(keepCrop) {
+    if (!this.video) return;
+    const job = ++this.videoJob, el = this.el;
+    const opts = {
+      start: Math.max(0, Number($(".v-start", el).value) || 0),
+      length: Math.min(20, Math.max(0.2, Number($(".v-length", el).value) || 4)),
+      fps: Number($(".v-fps", el).value) || 10,
+      cancelled: () => job !== this.videoJob,
+    };
+    let g;
+    try {
+      g = await decodeVideo(this.video, opts, (i, n) => { if (job === this.videoJob) this.facts(`Разбираю видео на кадры: ${i} из ${n}`); });
+    } catch (e) {
+      if (job === this.videoJob) this.facts(e.message, true);
+      return;
+    }
+    if (!g || job !== this.videoJob) return; // a newer grab or another file took over
+    const same = this.gif && this.gif.width === g.width && this.gif.height === g.height;
+    this.gif = g;
+    if (keepCrop && same) {
+      const n = g.frames.length;
+      Object.assign($(".scrub", el), { max: n - 1, value: Math.min(n - 1, Number($(".scrub", el).value)) });
+      Object.assign($(".from", el), { max: n, value: 1 });
+      Object.assign($(".to", el), { max: n, value: n });
+      this.changed();
+    } else this.sourceReady();
+  }
+
+  // A new source is in this.gif: reset the crop and the frame range.
+  sourceReady() {
     this.keep = null;
     this.fit = "contain";
     for (const b of this.el.querySelectorAll("[data-fit]")) b.setAttribute("aria-pressed", String(b.dataset.fit === "contain"));
