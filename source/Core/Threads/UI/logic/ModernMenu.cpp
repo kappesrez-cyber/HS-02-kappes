@@ -1,8 +1,8 @@
 // HS-02 colour settings menu, laid out like the stock FNIRSI firmware:
 //   Settings ─┬─ Sleep    : sleep after, sleep temperature, power off after, motion sensor
 //             ├─ Tip      : presets 1-3, +/- step, max power, USB-PD voltage
-//             ├─ System   : sound, brightness, orientation, +/- buttons, firmware update,
-//             │             factory reset, version
+//             ├─ System   : sound, brightness, orientation, +/- buttons, language,
+//             │             GIF screensaver, boot GIF, firmware update, factory reset, version
 //             ├─ Advanced : the full IronOS settings menu, diagnostics
 //             └─ Exit
 // Controls: +/- move (held: repeat), OK = open / edit / confirm, hold OK = back.
@@ -27,7 +27,7 @@ namespace {
 
 enum MenuId : uint8_t { M_ROOT, M_SLEEP, M_TIP, M_SYSTEM, M_ADVANCED };
 enum class Kind : uint8_t { Submenu, Setting, Action, Info };
-enum Fmt : uint8_t { F_LANG, F_TEMP, F_SLEEP, F_MINUTES, F_OFFNUM, F_WATTS, F_PD, F_BRIGHT, F_ORIENT, F_REVERSE, F_STEP, F_NONE };
+enum Fmt : uint8_t { F_LANG, F_TEMP, F_SLEEP, F_MINUTES, F_OFFNUM, F_WATTS, F_PD, F_BRIGHT, F_ORIENT, F_REVERSE, F_STEP, F_GIF, F_ONOFF, F_NONE };
 enum ActionId : uint8_t { A_EXIT, A_IRONOS, A_DIAG, A_UPDATE, A_RESET, A_CALIB, A_CALRESET };
 
 using TextFn = const char *(*)();
@@ -73,6 +73,8 @@ const Item kSystemItems[] = {
     SETTING(kItemHand, OrientationMode, F_ORIENT, 0, MAX_ORIENTATION_MODE, 1),
     SETTING(kItemButtons, ReverseButtonTempChangeEnabled, F_REVERSE, 0, 1, 1),
     SETTING(kItemLanguage, HS02UiLanguage, F_LANG, 0, 2, 1),
+    SETTING(kItemGif, StandbyGif, F_GIF, 0, 6, 1),
+    SETTING(kItemBootGif, BootGif, F_ONOFF, 0, 1, 1),
     {kItemUpdate, Kind::Action, A_UPDATE, F_NONE, 0, 0, 0, 0},
     {kItemReset, Kind::Action, A_RESET, F_NONE, 0, 0, 0, 0},
     {kItemVersion, Kind::Info, 0, F_NONE, 0, 0, 0, 0},
@@ -181,6 +183,24 @@ void formatValue(const Item &item, char *out) {
   case F_LANG:
     put(p, v == 1 ? kValLangRu() : (v == 2 ? kValLangEn() : kValLangAuto()));
     break;
+  case F_ONOFF:
+    put(p, v ? kValOn() : kValOff());
+    break;
+  case F_GIF: { // idle time before the standby GIF starts (same table as HomeScreen.cpp)
+    static const uint16_t seconds[7] = {0, 5, 15, 30, 60, 120, 300};
+    const uint16_t        s          = seconds[v > 6 ? 6 : v];
+    if (!s) {
+      put(p, kValOff());
+    } else if (s < 60) {
+      p    = putNumber(p, s);
+      *p++ = ' ';
+      put(p, kSeconds());
+    } else {
+      p    = putNumber(p, s / 60);
+      *p++ = ' ';
+      put(p, kValMin());
+    }
+  } break;
   default:
     *p = '\0';
     break;

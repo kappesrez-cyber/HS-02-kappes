@@ -12,6 +12,7 @@ public:
   static void clearColor();
   static void setColorMode(bool) {}
   static void clearScreenColor() { clearColor(); }
+  static uint8_t *colorFrameBuffer();
   static void setColorPalette(const uint16_t *palette);
   static void setColorBands(const ColorBand *bands, uint8_t count);
   static void fillRectColor(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t color);
@@ -34,4 +35,8 @@ void ui_draw_alert(const char *title, const char *line1, const char *line2, cons
 enum Hs02Warning : uint8_t { HS02_WARN_SETTINGS_RESET, HS02_WARN_NO_ACCEL, HS02_WARN_NO_PD, HS02_WARN_RUNAWAY };
 void ui_draw_warning(uint8_t which);
 void ui_draw_warning_undervoltage_idle(void);
+enum class Hs02Gif : uint8_t { Standby = 0, Boot = 1 };
+bool     ui_gif_available(Hs02Gif kind);
+uint32_t ui_gif_duration_ms(Hs02Gif kind);
+bool     ui_draw_gif(Hs02Gif kind, uint32_t elapsedMs);
 void ui_draw_calibration(uint8_t step, TemperatureType_t current, TemperatureType_t setpoint, TemperatureType_t reading, bool ready);

@@ -28,7 +28,7 @@ jobs:
     steps:
       - name: Install toolchain
         run: |
-          apk add --no-cache gcc-arm-none-eabi g++-arm-none-eabi newlib-arm-none-eabi findutils python3 py3-pip make git bash
+          apk add --no-cache gcc-arm-none-eabi g++-arm-none-eabi newlib-arm-none-eabi findutils python3 py3-pip nodejs make git bash
           python3 -m pip install --break-system-packages bdflib
 
       - uses: actions/checkout@v4
@@ -41,11 +41,46 @@ jobs:
           # Short 8.3-style name: the FNIRSI MSD bootloader is happiest with it.
           cp source/Hexfile/${{ matrix.model }}_${{ matrix.lang }}_firmware.bin dist/${{ matrix.model }}_${{ matrix.lang }}.bin
 
+      - name: Add the GIFs from custom/ (standby.gif, boot.gif)
+        # Same encoder as the web constructor (tools/hs02-gif-studio). Replace the files in custom/
+        # to change what the release firmware ships with.
+        run: |
+          set -- --firmware dist/${{ matrix.model }}_${{ matrix.lang }}.bin
+          [ -f custom/standby.gif ] && set -- "$@" --standby custom/standby.gif
+          [ -f custom/boot.gif ] && set -- "$@" --boot custom/boot.gif
+          if [ $# -gt 2 ]; then node tools/hs02-gif-studio/cli.mjs "$@"; fi
+
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.model }}_${{ matrix.lang }}
           path: dist/*.bin
           if-no-files-found: error
+
+  # The web constructor (tools/hs02-gif-studio) on GitHub Pages, with the firmware of this build.
+  # Needs Settings > Pages > Source: GitHub Actions.
+  pages:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: site/firmware
+          merge-multiple: true
+      - run: cp tools/hs02-gif-studio/index.html tools/hs02-gif-studio/hs02gif.mjs site/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')

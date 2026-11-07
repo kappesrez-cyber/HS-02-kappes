@@ -31,6 +31,13 @@ void ui_draw_home_gauge_soldering(bool boostModeOn);
 void ui_draw_home_gauge_sleep(TemperatureType_t tipTemp);
 // Boot splash in the same style; progressX1000 = 0..1000 drives the segment bar.
 void ui_draw_boot_screen(uint16_t progressX1000);
+// User GIF animations appended to the firmware by the web constructor (tools/hs02-gif-studio).
+// ui_draw_gif() draws the frame due `elapsedMs` after the start (looping) full screen and returns
+// false when that animation isn't present.
+enum class Hs02Gif : uint8_t { Standby = 0, Boot = 1 };
+bool     ui_gif_available(Hs02Gif kind);
+uint32_t ui_gif_duration_ms(Hs02Gif kind); // one loop
+bool     ui_draw_gif(Hs02Gif kind, uint32_t elapsedMs);
 // HS-02 colour settings menu. Up to 3 visible rows; `selected` is the row (0..2) with the cursor.
 struct Hs02MenuRow {
   const char *label;

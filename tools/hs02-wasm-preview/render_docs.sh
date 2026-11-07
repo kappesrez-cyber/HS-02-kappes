@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Regenerates the README screenshots / GIFs from the production drawing code.
 #   tools/hs02-wasm-preview/render_docs.sh          -> docs/images/{ru,en}/*.png, boot.gif, banner
-# Needs: g++, python3 + Pillow. bdflib is optional (only CJK fonts need it; a stub is used).
+# Needs: g++, node, python3 + Pillow. bdflib is optional (only CJK fonts need it; a stub is used).
 set -euo pipefail
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 work="$(mktemp -d)"
@@ -24,8 +24,10 @@ g++ -std=c++17 -O1 -DMODEL_HS02 -DMODEL_HS02A \
     -I"$root/source/Core/BSP/Fnirsi" -I"$root/source/Core/Inc" -I"$root/source/Core/Drivers" \
   "$root/tools/hs02-wasm-preview/native/render_docs.cpp" -o "$work/render"
 mkdir -p "$work/ru" "$work/en"
-"$work/render" "$work/ru" 1
-"$work/render" "$work/en" 2
+# The standby GIF example (custom/standby.gif) through the same encoder as the web constructor.
+node "$root/tools/hs02-gif-studio/cli.mjs" --standby "$root/custom/standby.gif" --container "$work/assets.bin" > /dev/null
+"$work/render" "$work/ru" 1 "$work/assets.bin"
+"$work/render" "$work/en" 2 "$work/assets.bin"
 
 # 3) Frame, scale and assemble.
 python3 "$root/tools/hs02-wasm-preview/native/make_images.py" "$work" "$root/docs/images" "$root/tools/hs02-ui-fonts/fonts"

@@ -24,6 +24,7 @@ A custom [IronOS](https://github.com/Ralim/IronOS) firmware for the **FNIRSI HS-
 - 🔊 **Buzzer** with adjustable volume: a chime when the tip is ready, clicks for presets and start/stop.
 - 🔌 **USB-PD voltage** selectable (9 / 12 / 15 / 20 V) through the CH224K, like the stock firmware.
 - ⬆️ **Firmware update from the menu**, using the same bootloader flag as the stock firmware (no button juggling).
+- 🎞️ **Your own GIFs**: a standby screensaver and a boot animation. A web constructor crops the GIF to the screen and puts it into a finished firmware file, no rebuild needed.
 - 🛡️ Proper IronOS PID control, thermal-runaway protection, motion sleep and auto power-off underneath.
 
 > [!WARNING]
@@ -79,13 +80,13 @@ Settings
 ├── Sleep      Sleep after · Sleep temperature · Power off after · Motion sensor
 ├── Tip        Preset 1 · Preset 2 · Preset 3 · +/− step · Max power · PD voltage
 │              Calibration › · Reset calibration
-├── System     Sound · Brightness · Orientation · +/− buttons · Language
+├── System     Sound · Brightness · Orientation · +/− buttons · Language · GIF screensaver · Boot GIF
 │              Firmware update · Factory reset · Version
 ├── Advanced   All IronOS settings (the original menu) · Diagnostics
 └── Exit
 ```
 
-Defaults: presets 300 / 330 / 360 °C, step 5 °C, sleep after 5 min at 150 °C, sound 5/10, 20 V. The menu saves and closes itself after 60 s without input.
+Defaults: presets 300 / 330 / 360 °C, step 5 °C, sleep after 5 min at 150 °C, sound 5/10, 20 V, GIF screensaver after 30 s. The menu saves and closes itself after 60 s without input.
 
 ## Flashing
 
@@ -140,6 +141,25 @@ You need a tip thermometer (an FG-100-style meter, or a fine K-type thermocouple
 4. The result is written into the stock calibration words (raw ADC counts at 140 / 240 / 340 °C), so the stock firmware uses it too.
 
 Before the first write the factory values are backed up; *Reset calibration* restores them. In a simulation with a deliberately wrong factory calibration (+32 °C at 150 °C), the error after calibration stays within 2–3 °C between 150 and 350 °C.
+
+## Your own GIFs: screensaver and boot animation
+
+<p align="center"><img src="docs/images/standby_gif.gif" width="420" alt="Standby GIF screensaver"><br><sub>The bundled example (<code>custom/standby.gif</code>), as the firmware draws it.</sub></p>
+
+The firmware can show two animations of your own:
+
+- **a standby screensaver**: plays full screen while the iron sits idle. Delay in *Settings → System → GIF screensaver*: Off, 5 s, 15 s, 30 s (default), 1, 2 or 5 min. Any button or moving the iron brings standby back at once, and that press does nothing else, so it can't start heating. It never shows while the tip is above 50 °C, on a tip fault or below 9 V;
+- **a boot animation**: plays instead of the boot splash (1.5 to 8 s, a button skips it). Turn it off in *System → Boot GIF*.
+
+**Web constructor** ([`tools/hs02-gif-studio`](tools/hs02-gif-studio/README.md); with GitHub Pages enabled it runs at `https://<user>.github.io/<repo>/`):
+
+1. Pick the model and language (or load your own `.bin` from a release).
+2. Load a GIF for standby and/or boot. Drag the frame to choose the area: *Fit* shows the whole frame with borders, *Fill* crops the edges, *Free* stretches the chosen area. Speed, frame range and border colour are adjustable.
+3. The preview shows exactly what the iron will show. Press *Download firmware* and flash it as usual.
+
+No rebuild is needed: the constructor appends the GIFs to a finished `.bin` (up to ~28 KB for both; it drops frames by itself when needed). The screen keeps 4 colours per band of 4 rows (up to 80 colours per frame), so simple artwork with flat colours looks best.
+
+For releases, CI does the same with `custom/standby.gif` and `custom/boot.gif` (if present). From the command line: `node tools/hs02-gif-studio/cli.mjs --firmware HS02A_RU.bin --standby my.gif --boot boot.gif`.
 
 ## Building from source
 
@@ -218,6 +238,8 @@ The CH224K sink is configured by the MCU through CFG2/CFG3 (PB7/PB6), with CFG1 
 | `source/Core/Drivers/LCD.*`, `ColorBand.hpp` | ST7735 driver with per-row palettes |
 | `tools/hs02-ui-fonts/` | font generator (Inter, SIL OFL) |
 | `tools/hs02-wasm-preview/` | UI preview + screenshot renderer |
+| `tools/hs02-gif-studio/` | the GIF web constructor and its CLI (`custom/`: GIFs for releases) |
+| `source/Core/Threads/UI/drawing/color_160x80/draw_gif.cpp` | GIF playback (screensaver: `logic/HomeScreen.cpp`, boot: `BSP/Fnirsi/BSP.cpp`) |
 
 Developer notes (hardware facts, gotchas): [`DEVELOPMENT.md`](DEVELOPMENT.md). Changes: [`CHANGELOG.md`](CHANGELOG.md).
 

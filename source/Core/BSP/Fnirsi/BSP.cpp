@@ -425,8 +425,54 @@ uint16_t getTipInertia() {
 // the segment bar fills with an ease-in-out curve over ~1.2 s, then holds briefly.
 // Any button press skips it (after ~0.6 s). Replaced the former 25 KB bitmap logo.
 void ui_draw_boot_screen(uint16_t progressX1000);
+// From ui_drawing.hpp (not included here: the Nation headers clash with the UI headers).
+enum class Hs02Gif : uint8_t { Standby = 0, Boot = 1 };
+bool     ui_gif_available(Hs02Gif kind);
+uint32_t ui_gif_duration_ms(Hs02Gif kind);
+bool     ui_draw_gif(Hs02Gif kind, uint32_t elapsedMs);
+
+// Boot GIF (added with the web constructor, see draw_gif.cpp): plays instead of the splash for one
+// loop, but at least 1.5 s and at most 8 s. Any button skips it after ~0.6 s.
+static bool showBootGif() {
+  if (!getSettingValue(SettingsOptions::BootGif) || !ui_gif_available(Hs02Gif::Boot)) {
+    return false;
+  }
+  uint32_t loopMs = ui_gif_duration_ms(Hs02Gif::Boot);
+  while (loopMs && loopMs < 1500) {
+    loopMs += ui_gif_duration_ms(Hs02Gif::Boot);
+  }
+  if (loopMs > 8000 || !loopMs) {
+    loopMs = 8000;
+  }
+  LCD::setColorMode(true);
+  const TickType_t start = xTaskGetTickCount();
+  bool             first = true;
+  for (;;) {
+    const uint32_t elapsed = (xTaskGetTickCount() - start) * 1000 / TICKS_SECOND;
+    if (elapsed >= loopMs) {
+      break;
+    }
+    LCD::clearScreenColor();
+    ui_draw_gif(Hs02Gif::Boot, elapsed);
+    LCD::refresh(first);
+    if (first) {
+      vTaskDelay(TICKS_SECOND / 60); // let the panel scan the first frame before the backlight comes on
+      LCD::setBrightness(getSettingValue(SettingsOptions::DisplayBrightness));
+      first = false;
+    }
+    const ButtonState buttons = getButtonState();
+    if (elapsed >= 600 && buttons != BUTTON_NONE) {
+      break;
+    }
+    vTaskDelay(TICKS_SECOND / 50);
+  }
+  return true;
+}
 
 void showBootLogo(void) {
+  if (showBootGif()) {
+    return;
+  }
   constexpr uint8_t    frames     = 24;
   constexpr TickType_t frameTicks = TICKS_SECOND / 20;
   LCD::setColorMode(true);

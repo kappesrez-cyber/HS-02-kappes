@@ -132,6 +132,7 @@ public:
   static void setColorPalette(const uint16_t *palette) { DISPLAY_CLASS::setColorPalette(palette); }
   static void setColorBands(const ColorBand *bands, uint8_t count) { DISPLAY_CLASS::setColorBands(bands, count); }
   static void clearScreenColor() { DISPLAY_CLASS::clearScreenColor(); }
+  static uint8_t *colorFrameBuffer() { return DISPLAY_CLASS::colorFrameBuffer(); }
   static void fillRectColor(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t colorIndex) { DISPLAY_CLASS::fillRect2bpp(x, y, w, h, colorIndex); }
   static void drawRingColor(uint8_t cx, uint8_t cy, uint8_t r, uint8_t thickness, uint8_t colorIndex, float startAngle, float endAngle) {
     DISPLAY_CLASS::drawRing2bpp(cx, cy, r, thickness, colorIndex, startAngle, endAngle);

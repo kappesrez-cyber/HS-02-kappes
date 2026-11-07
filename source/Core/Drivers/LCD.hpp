@@ -74,6 +74,9 @@ public:
   // Clears the buffer to palette index 0 (background). Index 0 is chosen so this is a plain
   // memset, same trick as the existing mono clearScreen().
   static void clearScreenColor() { memset(activeColorBuffer, 0, LCD_SCREEN_BUF_SIZE_2BPP); }
+  // The 2bpp frame being drawn (LCD_SCREEN_BUF_SIZE_2BPP bytes, row-major: byte y*40 + x/4,
+  // pixel x%4 in bits 2*(x%4)). Lets a screen unpack a whole stored frame (standby GIF) at once.
+  static uint8_t *colorFrameBuffer() { return activeColorBuffer; }
 
   // 2bpp primitives for the colour home/soldering screen. Coordinates are real device pixels.
   static void fillRect2bpp(uint8_t x0, uint8_t y0, uint8_t w, uint8_t h, uint8_t colorIndex);
