@@ -111,7 +111,14 @@ void ui_draw_boot_screen(uint16_t progressX1000);
 
 // Include the actual committed UI implementation, not a copied browser version.
 #include "../../../../source/Core/Threads/UI/drawing/color_160x80/draw_home_gauge.cpp"
-#include "../../../../source/Core/Threads/UI/drawing/color_160x80/draw_standby_gif.cpp"
+// User GIF assets: the host hands draw_gif.cpp a buffer instead of the flash after the image.
+static uint8_t  hostAssets[32 * 1024];
+static uint32_t hostAssetsSize = 0;
+extern "C" const uint8_t *hs02AssetArea(uint32_t *maxBytes) {
+  *maxBytes = hostAssetsSize;
+  return hostAssets;
+}
+#include "../../../../source/Core/Threads/UI/drawing/color_160x80/draw_gif.cpp"
 
 extern "C" {
 void hs02_ui_set_state(uint16_t tip, uint16_t target, uint16_t boost, uint16_t wattsX10, uint16_t voltsX10, uint8_t source, uint8_t disconnected) {
@@ -120,8 +127,11 @@ void hs02_ui_set_state(uint16_t tip, uint16_t target, uint16_t boost, uint16_t w
 }
 void hs02_ui_set_tip_microvolts(uint16_t tipMicrovolts) { state.tipMicrovolts = tipMicrovolts; }
 void hs02_ui_render(uint8_t mode) {
-  Display::clearColor(); if (mode == 0) ui_draw_home_gauge_idle(state.tip); else if (mode == 1) ui_draw_home_gauge_soldering(false); else if (mode == 2) ui_draw_home_gauge_soldering(true); else if (mode == 3) ui_draw_home_gauge_sleep(state.tip); else if (mode == 4) ui_draw_boot_screen(state.tip); else ui_draw_standby_gif(state.tip * 10u); // mode 5: GIF at tip x 10 ms
+  Display::clearColor(); if (mode == 0) ui_draw_home_gauge_idle(state.tip); else if (mode == 1) ui_draw_home_gauge_soldering(false); else if (mode == 2) ui_draw_home_gauge_soldering(true); else if (mode == 3) ui_draw_home_gauge_sleep(state.tip); else if (mode == 4) ui_draw_boot_screen(state.tip); else ui_draw_gif(mode == 6 ? Hs02Gif::Boot : Hs02Gif::Standby, state.tip * 10u); // 5/6: standby/boot GIF at tip x 10 ms
 }
+// Loads an asset container (as appended to the firmware by tools/hs02-gif-studio).
+uint8_t *hs02_ui_assets_buffer() { return hostAssets; }
+void hs02_ui_set_assets_size(uint32_t size) { hostAssetsSize = size > sizeof(hostAssets) ? sizeof(hostAssets) : size; assetsChecked = false; animations[0] = animations[1] = nullptr; }
 const uint8_t *hs02_ui_framebuffer() { return frame; }
 uint32_t hs02_ui_framebuffer_size() { return sizeof(frame); }
 const uint16_t *hs02_ui_palette() { return activePalette; }

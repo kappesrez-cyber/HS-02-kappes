@@ -5,14 +5,16 @@ All notable changes of **HS-02 Modern UI** (on top of [MYMDO/IronOS-FNIRSI-HS-02
 ## [Unreleased]
 
 ### Added
-- **Standby GIF screensaver**: after a configurable idle time in standby (*System → GIF screensaver*:
-  Off / 5 s / 15 s / 30 s / 1 / 2 / 5 min, default 30 s) the screen plays `custom/standby.gif` full screen.
-  Any button or motion returns to standby (the dismissing press is swallowed); never shown while the
-  tip is above 50 °C, on a tip fault or below 9 V.
-- `tools/hs02-standby-gif/gif2hs02.py`: converts any GIF to the 2bpp framebuffer with a 4-colour
-  palette per 4-row band (RLE, XOR against frame 0, deduplicated palettes, 24 KB flash budget) and
-  writes a preview of exactly what the iron shows. CI converts `custom/standby.gif` on every build.
-- `docs/images/standby_gif.gif` rendered from the production drawing code.
+- **Your own GIFs**, without rebuilding the firmware:
+  - **standby screensaver**: after an idle time (*System → GIF screensaver*: Off / 5 s / 15 s / 30 s / 1 / 2 / 5 min,
+    default 30 s) the standby GIF plays full screen. Any button or motion returns to standby (the dismissing press is
+    swallowed); never shown while the tip is above 50 °C, on a tip fault or below 9 V;
+  - **boot animation** instead of the boot splash (one loop, 1.5–8 s, a button skips it; *System → Boot GIF*).
+- **GIF web constructor** (`tools/hs02-gif-studio`, deployed to GitHub Pages by CI): load a GIF, crop it to 160×80
+  (fit / fill / free), set speed, frame range and border colour, see exactly what the iron will show and download a
+  patched `.bin`. The GIFs are appended after the firmware image as a CRC-checked container (4 colours per 4-row band,
+  RLE, XOR against frame 0); the firmware finds it through the `HS02SLOT` record and the `_hs02_assets_start` linker
+  symbol. `cli.mjs` does the same from the command line; CI adds `custom/standby.gif` / `custom/boot.gif` to releases.
 
 ## [1.0.1] — 2026-11-06
 

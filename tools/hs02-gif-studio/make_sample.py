@@ -4,7 +4,7 @@
 A soldering iron resting on the bottom of the screen, its tip glowing, smoke curling up,
 and the model name on the right. Original artwork, drawn in code so it can be regenerated:
 
-    python3 tools/hs02-standby-gif/make_sample.py      # writes custom/standby.gif
+    python3 tools/hs02-gif-studio/make_sample.py      # writes custom/standby.gif
 
 Replace custom/standby.gif with your own GIF to change the screensaver.
 """

@@ -106,6 +106,9 @@ void applyPDVoltageSetting();   // Drive the CH224K CFG pins from SettingsOption
 void enterFirmwareUpdateMode(); // Flag the FNIRSI bootloader (same as the stock "Firmware upgrade" item) and reboot
 uint32_t *hs02StockPageBegin();  // Copy of the stock settings block (104 words) to modify ...
 void      hs02StockPageCommit(); // ... then write it back to 0x0801F800 (erases the page)
+// Flash area right after the firmware image where user assets (GIFs) may be appended; *maxBytes
+// is how far it may extend (up to the IronOS settings page).
+const uint8_t *hs02AssetArea(uint32_t *maxBytes);
 
 // preStartChecks are run until they return 0
 // By the PID, after each ADC sample comes in

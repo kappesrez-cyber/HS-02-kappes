@@ -11,7 +11,7 @@ bool showExitMenuTransition = false;
 #if defined(LCD_160x80)
 // ---------------------------------------------------------------- standby GIF screensaver
 // After the configured idle time (Settings > System > GIF screensaver) the standby screen plays
-// custom/standby.gif full screen. Any button or moving the iron brings the standby screen back;
+// the standby GIF full screen (added with the web constructor, see draw_gif.cpp). Any button or moving the iron brings the standby screen back;
 // the press that does so is swallowed (until released) so it can't start heating by accident.
 // It never covers a hot tip (> 50 C), a tip fault or a low supply voltage.
 namespace {
@@ -39,7 +39,7 @@ static bool standbyGifService(ButtonState &buttons, const guiContext *cxt, uint3
 
   const uint16_t   setting = getSettingValue(SettingsOptions::StandbyGif);
   const TickType_t now     = xTaskGetTickCount();
-  const bool       allowed = setting > 0 && setting < sizeof(kGifDelaySeconds) / sizeof(kGifDelaySeconds[0]) && !undervoltage
+  const bool       allowed = setting > 0 && ui_gif_available(Hs02Gif::Standby) && setting < sizeof(kGifDelaySeconds) / sizeof(kGifDelaySeconds[0]) && !undervoltage
                        && getInputVoltageX10(getSettingValue(SettingsOptions::VoltageDiv), 0) >= 90 && tipTempC < kGifMaxTipTempC
                        && !isTipDisconnected() && !isTipShorted();
 
@@ -53,7 +53,7 @@ static bool standbyGifService(ButtonState &buttons, const guiContext *cxt, uint3
       }
       return false;
     }
-    ui_draw_standby_gif(now - gifStart);
+    ui_draw_gif(Hs02Gif::Standby, now - gifStart);
     return true;
   }
   if (!allowed) {
@@ -71,7 +71,7 @@ static bool standbyGifService(ButtonState &buttons, const guiContext *cxt, uint3
   }
   gifActive = true;
   gifStart  = now;
-  ui_draw_standby_gif(0);
+  ui_draw_gif(Hs02Gif::Standby, 0);
   return true;
 }
 

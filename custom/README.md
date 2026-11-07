@@ -1,6 +1,9 @@
-# Your files
+# GIFs for the release firmware
 
-- **`standby.gif`**: the standby screensaver (*Settings → System → GIF screensaver*). Replace it with
-  your own GIF (any size, transparency is fine) and push: CI converts it and builds the firmware.
-  To check locally first: `python3 tools/hs02-standby-gif/gif2hs02.py --preview preview.gif`.
-  Details: [`tools/hs02-standby-gif`](../tools/hs02-standby-gif/README.md).
+CI puts these into every firmware it builds (with the same encoder as the web constructor):
+
+- **`standby.gif`**: the standby screensaver (*Settings → System → GIF screensaver*).
+- **`boot.gif`** (optional, not present by default): the boot animation (*Settings → System → Boot GIF*).
+
+Replace or add a file and push. To try a GIF on your own iron without touching the repository, use the web
+constructor instead: [`tools/hs02-gif-studio`](../tools/hs02-gif-studio/README.md).

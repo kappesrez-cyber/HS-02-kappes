@@ -150,8 +150,11 @@ motion-sleep), which is why V2.1 "holds temperature more aggressively".
   Official HS-02A files: `bin\0` + LE length. Short 8.3 names are safest.
 - **CH224K**: CFG2/CFG3 = 00 9 V, 01 12 V, 11 15 V, 10 20 V (`applyPDVoltageSetting`).
 - **Screenshots**: `tools/hs02-wasm-preview/render_docs.sh` compiles the real drawing code for the host.
-- **Standby GIF**: `custom/standby.gif` → `tools/hs02-standby-gif/gif2hs02.py` → generated
-  `color_160x80/Hs02StandbyGif.hpp` (committed; CI regenerates it). Frames are unpacked straight into the
-  2bpp framebuffer (`Display::colorFrameBuffer()`) with one `ColorBand` per 4 rows, so playback costs
-  ~200 B of RAM. Idle detection / dismissal lives in `logic/HomeScreen.cpp` (`standbyGifService`);
-  setting `SettingsOptions::StandbyGif` (0 off, 1..6 = 5 s … 5 min; table duplicated in `ModernMenu.cpp`).
+- **User GIFs** (standby screensaver + boot animation): not compiled in. `tools/hs02-gif-studio/hs02gif.mjs` (web
+  constructor + `cli.mjs`) encodes them into a container appended right after the image; the linker script exports
+  `_hs02_assets_start` (end of `.data`'s load image) and `Core/BSP/Fnirsi/assets_slot.c` publishes it in the
+  `HS02SLOT` record the tools look for. Limit = `SETTINGS_START_PAGE` (0x0801E000; the image must stay below the
+  IronOS settings page anyway). `draw_gif.cpp` validates the container once (magic, bounds, CRC32) and unpacks frames
+  straight into the 2bpp framebuffer (one `ColorBand` per band, ≤ 40). Screensaver logic: `logic/HomeScreen.cpp`
+  (`standbyGifService`); boot: `showBootGif()` in the Fnirsi BSP. Settings `StandbyGif` (0 off, 1..6 = 5 s … 5 min;
+  table duplicated in `ModernMenu.cpp`) and `BootGif` (0/1).

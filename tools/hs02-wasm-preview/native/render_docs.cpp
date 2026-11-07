@@ -93,9 +93,17 @@ int main(int argc, char **argv) {
     dump(name);
   }
 
-  // Standby GIF screensaver: one frame every 20 ms over one loop (make_images.py assembles them).
-  {
-    const uint32_t loopMs = Hs02StandbyGif::kTotalMs, step = 20;
+  // Standby GIF screensaver from the asset container given as argv[3] (tools/hs02-gif-studio/cli.mjs
+  // --container): one frame every 20 ms over one loop (make_images.py assembles them).
+  if (argc > 3) {
+    FILE *af = fopen(argv[3], "rb");
+    if (af) {
+      hs02_ui_set_assets_size((uint32_t)fread(hs02_ui_assets_buffer(), 1, 32 * 1024, af));
+      fclose(af);
+    }
+  }
+  if (ui_gif_available(Hs02Gif::Standby)) {
+    const uint32_t loopMs = ui_gif_duration_ms(Hs02Gif::Standby), step = 20;
     uint32_t       n      = 0;
     for (uint32_t ms = 0; ms < loopMs && n < 500; ms += step, n++) {
       hs02_ui_set_state((uint16_t)(ms / 10), 330, 420, 0, 200, 0, 0);

@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HS-02 GIF Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one working column; firmware strip on top, two GIF slots (crop editor | device preview), build bar at the end. */
+:root {
+  --bg: #eceef1;
+  --panel: #ffffff;
+  --sunken: #e2e5e9;
+  --line: #d3d7dd;
+  --fg: #17191c;
+  --muted: #5d636c;
+  --accent: #e8850a;      /* tip heat, as on the iron's "Heating" pill */
+  --accent-ink: #ffffff;
+  --ok: #1f9d47;
+  --bad: #d63545;
+  --bezel: #1b1c1f;
+  --font-ui: "Onest", "Segoe UI", system-ui, sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121315; --panel: #1b1d20; --sunken: #24272b; --line: #33373d; --fg: #eceef1; --muted: #9aa1ab;
+    --accent: #ff9f0a; --accent-ink: #1a1206; --ok: #30d158; --bad: #ff5468; --bezel: #08090a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121315; --panel: #1b1d20; --sunken: #24272b; --line: #33373d; --fg: #eceef1; --muted: #9aa1ab;
+  --accent: #ff9f0a; --accent-ink: #1a1206; --ok: #30d158; --bad: #ff5468; --bezel: #08090a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font-ui);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 48px;
+}
+main { max-width: 1080px; margin: 0 auto; display: grid; gap: 20px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 650; }
+h1 { font-size: 28px; letter-spacing: -0.01em; }
+h2 { font-size: 18px; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.data { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: 13px; }
+header { display: grid; gap: 6px; }
+header p { max-width: 68ch; color: var(--muted); }
+.label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+
+section.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.seg { display: inline-flex; background: var(--sunken); border-radius: 10px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: transparent; color: var(--fg); font: 600 14px var(--font-ui); padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--panel); box-shadow: 0 1px 2px rgb(0 0 0 / 0.18); }
+button.btn, label.btn {
+  border: 1px solid var(--line); background: var(--panel); color: var(--fg); font: 600 14px var(--font-ui);
+  padding: 8px 14px; border-radius: 10px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center;
+}
+button.btn:hover, label.btn:hover { border-color: var(--muted); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+button.primary:hover { filter: brightness(1.06); border-color: var(--accent); }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button:focus-visible, label.btn:focus-within, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+select, input[type="number"] { font: 14px var(--font-ui); color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+input[type="number"] { width: 5.5em; }
+input[type="color"] { width: 38px; height: 32px; border: 1px solid var(--line); border-radius: 8px; padding: 2px; background: var(--panel); }
+.status { font-size: 14px; }
+.status.ok { color: var(--ok); }
+.status.bad { color: var(--bad); }
+
+.slots { display: grid; gap: 20px; }
+.slot-head { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: baseline; }
+.slot-body { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 820px) { .slot-body { grid-template-columns: minmax(0, 1fr); } }
+.editor { display: grid; gap: 10px; min-width: 0; }
+.stage { position: relative; background: var(--sunken); border-radius: 12px; overflow: hidden; touch-action: none; aspect-ratio: 16 / 10; max-width: 100%; }
+.stage canvas { width: 100%; height: 100%; display: block; cursor: grab; }
+.stage canvas.dragging { cursor: grabbing; }
+.drop { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 16px; color: var(--muted); border: 2px dashed var(--line); border-radius: 12px; }
+.drop.over { border-color: var(--accent); color: var(--fg); }
+.controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 14px; }
+.controls label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.controls .inline { display: flex; gap: 6px; align-items: center; color: var(--fg); }
+
+.device { display: grid; gap: 10px; justify-items: center; min-width: 0; }
+.bezel { background: var(--bezel); border-radius: 22px; padding: 14px; width: 100%; max-width: 420px; box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.06); }
+.bezel canvas { width: 100%; aspect-ratio: 2 / 1; display: block; image-rendering: pixelated; border-radius: 6px; background: #000; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center; }
+
+.meter { height: 10px; background: var(--sunken); border-radius: 6px; overflow: hidden; display: flex; }
+.meter span { display: block; height: 100%; }
+.meter .m-standby { background: var(--accent); }
+.meter .m-boot { background: var(--ok); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+ol.steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 72ch; }
+kbd { font-family: var(--font-data); font-size: 12px; background: var(--sunken); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="label">FNIRSI HS-02A · HS-02B · Modern UI</span>
+    <h1>HS-02 GIF Studio</h1>
+    <p>Загрузи свои GIF, выбери область кадра и получи готовую прошивку: одна анимация играет заставкой в режиме ожидания, другая при включении. Всё считается прямо в браузере, файлы никуда не отправляются.</p>
+  </header>
+
+  <section class="panel" aria-labelledby="fw-title">
+    <h2 id="fw-title">Прошивка</h2>
+    <div class="row" id="fw-builtin">
+      <div class="seg" role="group" aria-label="Модель">
+        <button type="button" data-model="HS02A" aria-pressed="true">HS-02A</button>
+        <button type="button" data-model="HS02B" aria-pressed="false">HS-02B</button>
+      </div>
+      <div class="seg" role="group" aria-label="Язык">
+        <button type="button" data-lang="RU" aria-pressed="true">Русский</button>
+        <button type="button" data-lang="EN" aria-pressed="false">English</button>
+      </div>
+      <span class="muted">или</span>
+    </div>
+    <div class="row">
+      <label class="btn" for="fw-file">Свой файл .bin<input id="fw-file" type="file" accept=".bin,application/octet-stream"></label>
+      <span class="muted" style="font-size:13px">HS-02A — жала C245, HS-02B — жала C210.</span>
+    </div>
+    <p class="status" id="fw-status" role="status">Загружаю прошивку…</p>
+  </section>
+
+  <div class="slots" id="slots"></div>
+
+  <section class="panel" aria-labelledby="build-title">
+    <h2 id="build-title">Сборка</h2>
+    <div class="meter" aria-hidden="true"><span class="m-standby" id="m-standby" style="width:0"></span><span class="m-boot" id="m-boot" style="width:0"></span></div>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>Заставка <b class="data" id="l-standby">—</b></span>
+      <span><i style="background:var(--ok)"></i>При включении <b class="data" id="l-boot">—</b></span>
+      <span>Свободно под GIF <b class="data" id="l-max">—</b></span>
+    </div>
+    <div class="row">
+      <button type="button" class="btn primary" id="build" disabled>Скачать прошивку</button>
+      <span class="status" id="build-status" role="status"></span>
+    </div>
+    <ol class="steps">
+      <li>Войди в загрузчик: <b>Настройки → Система → Обновить прошивку</b>, или отключи паяльник, зажми <kbd>OK</kbd> и подключи к компьютеру.</li>
+      <li>Скопируй скачанный <span class="data" id="fw-name">HS02A_RU.bin</span> на диск <b>BOOTLOADER</b> (на Linux — дважды, с <span class="data">sync</span>).</li>
+      <li>Задержка заставки: <b>Система → GIF-заставка</b>. Анимация при включении: <b>Система → GIF при включении</b>.</li>
+    </ol>
+  </section>
+</main>
+
+<template id="slot-tpl">
+  <section class="panel slot">
+    <div class="slot-head">
+      <h2 class="slot-title"></h2>
+      <div class="row">
+        <label class="btn">Загрузить GIF<input type="file" accept="image/gif" class="gif-file"></label>
+        <button type="button" class="btn copy-other" hidden>Взять GIF из заставки</button>
+        <button type="button" class="btn clear" hidden>Убрать</button>
+      </div>
+    </div>
+    <p class="muted slot-hint"></p>
+    <div class="slot-body">
+      <div class="editor">
+        <div class="stage">
+          <canvas class="crop" aria-label="Область кадра: перетащи рамку или её угол"></canvas>
+          <div class="drop">Перетащи GIF сюда<br>или нажми «Загрузить GIF»</div>
+        </div>
+        <div class="row">
+          <div class="seg" role="group" aria-label="Область">
+            <button type="button" data-fit="contain" aria-pressed="true">Вписать</button>
+            <button type="button" data-fit="cover" aria-pressed="false">Заполнить</button>
+            <button type="button" data-fit="free" aria-pressed="false">Свободно</button>
+          </div>
+        </div>
+        <div class="controls">
+          <label>Кадр в редакторе <input type="range" class="scrub" min="0" max="0" value="0"></label>
+          <label>Скорость
+            <select class="speed"><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="1.5">1,5×</option><option value="2">2×</option><option value="3">3×</option></select>
+          </label>
+          <label>Кадры с … по
+            <span class="inline"><input type="number" class="from" min="1" value="1"> – <input type="number" class="to" min="1" value="1"></span>
+          </label>
+          <label>Фон полей
+            <span class="inline"><input type="color" class="bg" value="#000000"> <span class="data bg-hex">#000000</span></span>
+          </label>
+          <label class="inline"><input type="checkbox" class="smooth" checked> Сглаживать при уменьшении</label>
+        </div>
+      </div>
+      <div class="device">
+        <div class="bezel"><canvas class="screen" width="160" height="80" aria-label="Так это покажет паяльник"></canvas></div>
+        <div class="facts data"></div>
+      </div>
+    </div>
+  </section>
+</template>
+
+<script type="module">
+import {
+  W, H, decodeGif, presetCrop, renderToScreen, encodeAnimation, encodeToFit, parseFirmware, patchFirmware,
+  decodeAnimation, rgbFrom565, crc32, dropEveryOther, buildContainer,
+} from "./hs02gif.mjs";
+
+const $ = (sel, root = document) => root.querySelector(sel);
+const kb = (n) => (n / 1024).toFixed(1).replace(".", ",") + " КБ";
+const MAX_FRAMES = 200;
+
+// ---------------------------------------------------------------- firmware
+const fw = { model: "HS02A", lang: "RU", parsed: null, name: "HS02A_RU.bin", custom: false };
+
+async function loadBuiltin() {
+  fw.custom = false;
+  fw.name = `${fw.model}_${fw.lang}.bin`;
+  setStatus($("#fw-status"), "Загружаю прошивку…");
+  try {
+    useFirmware(await fetchFirmware(fw.name), fw.name);
+  } catch {
+    fw.parsed = null;
+    setStatus($("#fw-status"), "Готовые прошивки здесь недоступны. Выбери файл .bin из релиза (HS02A_RU.bin и т.п.).", "bad");
+    refreshBuild();
+  }
+}
+
+// firmware/<name>.bin, or a base64 copy (<name>.b64.txt) where .bin files can't be served.
+async function fetchFirmware(name) {
+  const res = await fetch(`firmware/${name}`);
+  if (res.ok) return new Uint8Array(await res.arrayBuffer());
+  const txt = await fetch(`firmware/${name.replace(/\.bin$/, ".b64.txt")}`);
+  if (!txt.ok) throw new Error(String(txt.status));
+  return Uint8Array.from(atob((await txt.text()).trim()), (c) => c.charCodeAt(0));
+}
+
+function useFirmware(bytes, name) {
+  try {
+    fw.parsed = parseFirmware(bytes);
+    fw.name = name.replace(/\.bin$/i, "").replace(/_firmware$/i, "").slice(0, 8) + ".bin";
+    const ex = fw.parsed.existing;
+    const has = ex ? [ex.standby && "заставка", ex.boot && "анимация при включении"].filter(Boolean).join(" и ") : "";
+    setStatus($("#fw-status"), `${name}: образ ${kb(fw.parsed.image.length)}, под GIF свободно ${kb(fw.parsed.maxBytes)}.` + (has ? ` Внутри уже есть ${has}.` : ""), "ok");
+    $("#fw-name").textContent = fw.name;
+    for (const s of slots) s.onFirmware(ex);
+  } catch (e) {
+    fw.parsed = null;
+    setStatus($("#fw-status"), e.message, "bad");
+  }
+  refreshBuild();
+}
+
+for (const b of document.querySelectorAll("[data-model]")) b.addEventListener("click", () => { press(b, "[data-model]"); fw.model = b.dataset.model; loadBuiltin(); });
+for (const b of document.querySelectorAll("[data-lang]")) b.addEventListener("click", () => { press(b, "[data-lang]"); fw.lang = b.dataset.lang; loadBuiltin(); });
+$("#fw-file").addEventListener("change", async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  fw.custom = true;
+  for (const b of document.querySelectorAll("[data-model],[data-lang]")) b.setAttribute("aria-pressed", "false");
+  useFirmware(new Uint8Array(await f.arrayBuffer()), f.name);
+  e.target.value = "";
+});
+
+function press(btn, selector) {
+  for (const b of btn.parentElement.querySelectorAll(selector)) b.setAttribute("aria-pressed", String(b === btn));
+}
+function setStatus(el, text, kind = "") { el.textContent = text; el.className = "status" + (kind ? " " + kind : ""); }
+
+// ---------------------------------------------------------------- slots
+class Slot {
+  constructor(kind, title, hint) {
+    this.kind = kind;
+    this.el = $("#slot-tpl").content.firstElementChild.cloneNode(true);
+    $(".slot-title", this.el).textContent = title;
+    $(".slot-hint", this.el).textContent = hint;
+    $("#slots").append(this.el);
+    this.gif = null;        // decoded source
+    this.crop = null;       // {x, y, w, h} in source pixels
+    this.fit = "contain";
+    this.keep = null;       // animation blob already inside the firmware
+    this.encoded = null;    // {bytes, frames, totalMs}
+    this.screenFrames = null;
+    this.canvas = $(".crop", this.el);
+    this.ctx = this.canvas.getContext("2d");
+    this.screen = $(".screen", this.el).getContext("2d");
+    this.bindUi();
+    new ResizeObserver(() => this.drawEditor()).observe(this.canvas);
+    this.animate();
+  }
+
+  bindUi() {
+    const el = this.el;
+    $(".gif-file", el).addEventListener("change", async (e) => {
+      const f = e.target.files[0];
+      if (f) await this.loadFile(f);
+      e.target.value = "";
+    });
+    const stage = $(".stage", el), drop = $(".drop", el);
+    stage.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+    stage.addEventListener("dragleave", () => drop.classList.remove("over"));
+    stage.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      drop.classList.remove("over");
+      const f = e.dataTransfer.files[0];
+      if (f) await this.loadFile(f);
+    });
+    $(".clear", el).addEventListener("click", () => { this.gif = null; this.keep = null; this.encoded = null; this.update(); });
+    for (const b of el.querySelectorAll("[data-fit]")) {
+      b.addEventListener("click", () => {
+        press(b, "[data-fit]");
+        this.fit = b.dataset.fit;
+        if (this.gif && this.fit !== "free") this.crop = presetCrop(this.gif.width, this.gif.height, this.fit);
+        this.changed();
+      });
+    }
+    $(".scrub", el).addEventListener("input", () => this.drawEditor());
+    for (const c of [".speed", ".from", ".to", ".smooth"]) $(c, el).addEventListener("change", () => this.changed());
+    $(".bg", el).addEventListener("input", () => { $(".bg-hex", el).textContent = $(".bg", el).value; this.changed(); });
+    this.bindCrop();
+  }
+
+  async loadFile(file, gifOverride) {
+    try {
+      this.gif = gifOverride || decodeGif(new Uint8Array(await file.arrayBuffer()));
+    } catch (e) {
+      this.facts(e.message, true);
+      return;
+    }
+    this.keep = null;
+    this.fit = "contain";
+    for (const b of this.el.querySelectorAll("[data-fit]")) b.setAttribute("aria-pressed", String(b.dataset.fit === "contain"));
+    this.crop = presetCrop(this.gif.width, this.gif.height, "contain");
+    const n = this.gif.frames.length;
+    Object.assign($(".scrub", this.el), { max: n - 1, value: 0 });
+    Object.assign($(".from", this.el), { max: n, value: 1 });
+    Object.assign($(".to", this.el), { max: n, value: n });
+    this.changed();
+  }
+
+  onFirmware(existing) {
+    if (this.gif) return; // the user's own GIF wins
+    const blob = existing && existing[this.kind];
+    this.keep = blob || null;
+    this.encoded = null;
+    this.update();
+  }
+
+  // ---- crop editor
+  view() {
+    // Region of the source shown in the editor: the image plus the crop, with a margin.
+    const g = this.gif, c = this.crop;
+    const x0 = Math.min(0, c.x), y0 = Math.min(0, c.y), x1 = Math.max(g.width, c.x + c.w), y1 = Math.max(g.height, c.y + c.h);
+    const pad = Math.max(x1 - x0, y1 - y0) * 0.06;
+    const cw = this.canvas.width, ch = this.canvas.height;
+    const s = Math.min(cw / (x1 - x0 + 2 * pad), ch / (y1 - y0 + 2 * pad));
+    return { s, ox: (cw - (x1 - x0) * s) / 2 - x0 * s, oy: (ch - (y1 - y0) * s) / 2 - y0 * s };
+  }
+
+  drawEditor() {
+    const cv = this.canvas, dpr = window.devicePixelRatio || 1;
+    const w = Math.round(cv.clientWidth * dpr), h = Math.round(cv.clientHeight * dpr);
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    const ctx = this.ctx;
+    ctx.clearRect(0, 0, w, h);
+    if (!this.gif) return;
+    const v = this.view(), g = this.gif;
+    const idx = Math.min(g.frames.length - 1, Number($(".scrub", this.el).value));
+    if (!this.frameCanvas) this.frameCanvas = document.createElement("canvas");
+    const fc = this.frameCanvas;
+    fc.width = g.width; fc.height = g.height;
+    fc.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(g.frames[idx].rgba), g.width, g.height), 0, 0);
+    ctx.imageSmoothingEnabled = v.s < 1;
+    ctx.fillStyle = $(".bg", this.el).value;
+    const c = this.crop;
+    ctx.fillRect(v.ox + c.x * v.s, v.oy + c.y * v.s, c.w * v.s, c.h * v.s);
+    ctx.drawImage(fc, v.ox, v.oy, g.width * v.s, g.height * v.s);
+    // dim outside the crop
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    const rx = v.ox + c.x * v.s, ry = v.oy + c.y * v.s, rw = c.w * v.s, rh = c.h * v.s;
+    ctx.beginPath();
+    ctx.rect(0, 0, w, h);
+    ctx.rect(rx, ry, rw, rh);
+    ctx.fill("evenodd");
+    const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#ff9f0a";
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2 * dpr;
+    ctx.strokeRect(rx, ry, rw, rh);
+    ctx.fillStyle = accent;
+    const hs = 7 * dpr;
+    for (const [x, y] of [[rx, ry], [rx + rw, ry], [rx, ry + rh], [rx + rw, ry + rh]]) ctx.fillRect(x - hs, y - hs, hs * 2, hs * 2);
+    ctx.fillStyle = "#fff";
+    ctx.font = `${12 * dpr}px ${getComputedStyle(document.body).fontFamily}`;
+    ctx.fillText(`${Math.round(c.w)}×${Math.round(c.h)} → 160×80`, rx + 6 * dpr, ry + rh - 8 * dpr);
+  }
+
+  bindCrop() {
+    const cv = this.canvas;
+    let drag = null;
+    const toSrc = (e) => {
+      const r = cv.getBoundingClientRect(), dpr = cv.width / r.width, v = this.view();
+      const px = (e.clientX - r.left) * dpr, py = (e.clientY - r.top) * dpr;
+      return { px, py, x: (px - v.ox) / v.s, y: (py - v.oy) / v.s, v, dpr };
+    };
+    cv.addEventListener("pointerdown", (e) => {
+      if (!this.gif) return;
+      const p = toSrc(e), c = this.crop, tol = 14 * p.dpr / p.v.s;
+      const corners = [[c.x, c.y], [c.x + c.w, c.y], [c.x, c.y + c.h], [c.x + c.w, c.y + c.h]];
+      const ci = corners.findIndex(([x, y]) => Math.abs(p.x - x) < tol && Math.abs(p.y - y) < tol);
+      if (ci >= 0) {
+        const [ax, ay] = corners[3 - ci]; // opposite corner stays put
+        drag = { mode: "resize", ax, ay, sx: ci % 2 ? 1 : -1, sy: ci >= 2 ? 1 : -1 };
+      } else if (p.x >= c.x && p.x <= c.x + c.w && p.y >= c.y && p.y <= c.y + c.h) {
+        drag = { mode: "move", dx: p.x - c.x, dy: p.y - c.y };
+      } else return;
+      cv.setPointerCapture(e.pointerId);
+      cv.classList.add("dragging");
+    });
+    cv.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      const p = toSrc(e), g = this.gif, lock = this.fit !== "free";
+      if (drag.mode === "move") {
+        this.crop = { ...this.crop, x: p.x - drag.dx, y: p.y - drag.dy };
+      } else {
+        let w = Math.max(8, (p.x - drag.ax) * drag.sx), h = Math.max(4, (p.y - drag.ay) * drag.sy);
+        if (lock) { if (w / h > W / H) h = w / 2; else w = h * 2; }
+        const limit = Math.max(g.width, g.height) * 3;
+        w = Math.min(w, limit); h = Math.min(h, limit);
+        this.crop = { x: drag.sx > 0 ? drag.ax : drag.ax - w, y: drag.sy > 0 ? drag.ay : drag.ay - h, w, h };
+      }
+      if (this.fit === "cover" || this.fit === "contain") {
+        // moving/resizing by hand keeps the 2:1 lock but leaves the preset
+        for (const b of this.el.querySelectorAll("[data-fit]")) b.setAttribute("aria-pressed", "false");
+        this.fit = "locked";
+      }
+      this.drawEditor();
+    });
+    const end = () => { if (drag) { drag = null; cv.classList.remove("dragging"); this.changed(); } };
+    cv.addEventListener("pointerup", end);
+    cv.addEventListener("pointercancel", end);
+  }
+
+  // ---- encoding & preview
+  options() {
+    const hex = $(".bg", this.el).value.slice(1);
+    return {
+      bg: [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16)),
+      smooth: $(".smooth", this.el).checked,
+      speed: Number($(".speed", this.el).value),
+      from: Math.max(1, Number($(".from", this.el).value) || 1),
+      to: Number($(".to", this.el).value) || 1,
+    };
+  }
+
+  makeScreenFrames() {
+    const g = this.gif, o = this.options();
+    const from = Math.min(o.from, g.frames.length) - 1, to = Math.max(from + 1, Math.min(o.to, g.frames.length));
+    let frames = g.frames.slice(from, to).map((f) => ({
+      rgb: renderToScreen(f.rgba, g.width, g.height, this.crop, { fit: "stretch", smooth: o.smooth, bg: o.bg }),
+      delayMs: f.delayMs / o.speed,
+    }));
+    while (frames.length > MAX_FRAMES) frames = dropEveryOther(frames);
+    return frames;
+  }
+
+  changed() {
+    this.drawEditor();
+    clearTimeout(this.timer);
+    this.facts("Считаю…");
+    this.timer = setTimeout(() => this.update(), 250);
+  }
+
+  update() {
+    const el = this.el;
+    $(".drop", el).hidden = !!this.gif;
+    $(".clear", el).hidden = !(this.gif || this.keep);
+    const other = slots.find((s) => s !== this);
+    $(".copy-other", el).hidden = !(this.kind === "boot" && other && other.gif && !this.gif);
+    this.screenFrames = null;
+    this.encoded = null;
+    if (this.gif) {
+      this.screenFrames = this.makeScreenFrames();
+      this.encoded = encodeAnimation(this.screenFrames);
+    } else if (this.keep) {
+      this.encoded = { bytes: this.keep, ...summarize(this.keep) };
+    }
+    this.preview = this.encoded ? decodeAnimation(this.encoded.bytes) : null;
+    this.start = performance.now();
+    if (this.encoded) {
+      this.facts(`${this.encoded.frames} кадр. · ${(this.encoded.totalMs / 1000).toFixed(2).replace(".", ",")} с · ${kb(this.encoded.bytes.length)}` + (this.gif ? "" : " · уже в прошивке"));
+    } else {
+      this.facts(this.kind === "standby" ? "Без заставки" : "Без анимации: обычная заставка загрузки");
+    }
+    this.drawEditor();
+    refreshBuild();
+  }
+
+  facts(text, bad = false) {
+    const f = $(".facts", this.el);
+    f.textContent = text;
+    f.style.color = bad ? "var(--bad)" : "";
+  }
+
+  animate() {
+    const img = this.screen.createImageData(W, H);
+    const tick = (now) => {
+      requestAnimationFrame(tick);
+      const p = this.preview;
+      if (!p) {
+        if (this.lastShown !== null) { this.screen.fillStyle = "#000"; this.screen.fillRect(0, 0, W, H); this.lastShown = null; }
+        return;
+      }
+      let t = p.totalMs ? (now - this.start) % p.totalMs : 0, i = 0;
+      while (i + 1 < p.frames.length && t >= p.frames[i].ms) { t -= p.frames[i].ms; i++; }
+      if (i === this.lastShown && this.lastPreview === p) return;
+      this.lastShown = i; this.lastPreview = p;
+      const px = p.frames[i].rgb565, d = img.data;
+      for (let k = 0; k < px.length; k++) {
+        const [r, g, b] = rgbFrom565(px[k]);
+        d[k * 4] = r; d[k * 4 + 1] = g; d[k * 4 + 2] = b; d[k * 4 + 3] = 255;
+      }
+      this.screen.putImageData(img, 0, 0);
+    };
+    requestAnimationFrame(tick);
+  }
+}
+
+function summarize(blob) {
+  const dv = new DataView(blob.buffer, blob.byteOffset, blob.byteLength);
+  return { frames: dv.getUint16(0, true), totalMs: dv.getUint32(4, true) };
+}
+
+const slots = [
+  new Slot("standby", "Заставка в режиме ожидания", "Играет на весь экран, когда паяльник лежит без дела. Любая кнопка или движение возвращают обычный экран."),
+  new Slot("boot", "Анимация при включении", "Играет вместо заставки загрузки, от 1,5 до 8 секунд. Кнопка пропускает её."),
+];
+$(".copy-other", slots[1].el).addEventListener("click", () => slots[1].loadFile(null, slots[0].gif));
+
+// ---------------------------------------------------------------- build
+function refreshBuild() {
+  const max = fw.parsed ? fw.parsed.maxBytes : 0;
+  const sizes = slots.map((s) => (s.encoded ? s.encoded.bytes.length : 0));
+  const total = sizes[0] + sizes[1] + (sizes[0] || sizes[1] ? 32 : 0);
+  $("#l-standby").textContent = sizes[0] ? kb(sizes[0]) : "—";
+  $("#l-boot").textContent = sizes[1] ? kb(sizes[1]) : "—";
+  $("#l-max").textContent = max ? kb(max) : "—";
+  $("#m-standby").style.width = max ? Math.min(100, (sizes[0] / max) * 100) + "%" : "0";
+  $("#m-boot").style.width = max ? Math.min(100, (sizes[1] / max) * 100) + "%" : "0";
+  const btn = $("#build");
+  btn.disabled = !fw.parsed;
+  if (!fw.parsed) setStatus($("#build-status"), "");
+  else if (total > max) setStatus($("#build-status"), `Не влезает на ${kb(total - max)}: при сборке часть кадров будет пропущена.`, "bad");
+  else if (!total) setStatus($("#build-status"), "Без GIF получится обычная прошивка.");
+  else setStatus($("#build-status"), "Влезает.", "ok");
+}
+
+$("#build").addEventListener("click", async () => {
+  if (!fw.parsed) return;
+  const btn = $("#build");
+  btn.disabled = true;
+  setStatus($("#build-status"), "Собираю…");
+  await new Promise((r) => setTimeout(r, 30));
+  try {
+    const input = {}, kept = {};
+    for (const s of slots) {
+      if (s.gif) input[s.kind] = s.screenFrames || s.makeScreenFrames();
+      else if (s.keep) kept[s.kind] = s.keep;
+    }
+    let container = null, note = "";
+    if (input.standby || input.boot || kept.standby || kept.boot) {
+      const keptBytes = (kept.standby ? kept.standby.length : 0) + (kept.boot ? kept.boot.length : 0);
+      const r = encodeToFit(input, fw.parsed.maxBytes - keptBytes);
+      container = buildContainer({ standby: kept.standby || (r.standby && r.standby.bytes), boot: kept.boot || (r.boot && r.boot.bytes) });
+      if (container.length > fw.parsed.maxBytes) throw new Error("GIF не помещаются вместе. Убери одну из них.");
+      if (r.dropped.standby || r.dropped.boot) note = " Часть кадров пропущена, чтобы влезло.";
+    }
+    const out = patchFirmware(fw.parsed, container);
+    await saveFile(fw.name, out);
+    setStatus($("#build-status"), `Готово: ${fw.name}, ${kb(out.length)}.${note}`, "ok");
+  } catch (e) {
+    setStatus($("#build-status"), e.message || String(e), "bad");
+  }
+  btn.disabled = false;
+});
+
+// Plain download where the browser allows it; inside claude.ai the file comes as a .zip.
+async function saveFile(name, bytes) {
+  const downloads = window.claude && window.claude.use ? await window.claude.use("downloads") : null;
+  if (downloads) {
+    await downloads.save({ filename: name.replace(/\.bin$/, ".zip"), data: zipStore(name, bytes) });
+    return;
+  }
+  const url = URL.createObjectURL(new Blob([bytes], { type: "application/octet-stream" }));
+  const a = Object.assign(document.createElement("a"), { href: url, download: name });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// Minimal uncompressed ZIP with one file.
+function zipStore(name, data) {
+  const enc = new TextEncoder().encode(name), crc = crc32(data);
+  const local = new Uint8Array(30 + enc.length), central = new Uint8Array(46 + enc.length), end = new Uint8Array(22);
+  const lv = new DataView(local.buffer), cv = new DataView(central.buffer), ev = new DataView(end.buffer);
+  lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint32(14, crc, true);
+  lv.setUint32(18, data.length, true); lv.setUint32(22, data.length, true); lv.setUint16(26, enc.length, true); local.set(enc, 30);
+  cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true); cv.setUint32(16, crc, true);
+  cv.setUint32(20, data.length, true); cv.setUint32(24, data.length, true); cv.setUint16(28, enc.length, true); central.set(enc, 46);
+  ev.setUint32(0, 0x06054b50, true); ev.setUint16(8, 1, true); ev.setUint16(10, 1, true);
+  ev.setUint32(12, central.length, true); ev.setUint32(16, local.length + data.length, true);
+  const out = new Uint8Array(local.length + data.length + central.length + end.length);
+  out.set(local, 0); out.set(data, local.length); out.set(central, local.length + data.length); out.set(end, local.length + data.length + central.length);
+  return out;
+}
+
+loadBuiltin();
+for (const s of slots) s.update();
+</script>
+</body>
+</html>

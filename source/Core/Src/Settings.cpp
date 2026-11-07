@@ -131,6 +131,7 @@ static const SettingConstants settingsConstants[(int)SettingsOptions::SettingsOp
     {                     0,                                                                     3,                 1,           DEFAULT_PD_VOLTAGE}, // PDVoltage
     {                     0,                                                                     2,                 1,                            0}, // HS02UiLanguage
     {                     0,                                                                     6,                 1,                            3}, // StandbyGif
+    {                     0,                                                                     1,                 1,                            1}, // BootGif
 };
 static_assert((sizeof(settingsConstants) / sizeof(SettingConstants)) == ((int)SettingsOptions::SettingsOptionsLength));
 

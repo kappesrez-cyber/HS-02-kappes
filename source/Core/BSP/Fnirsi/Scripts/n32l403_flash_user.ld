@@ -141,6 +141,10 @@ SECTIONS
     _edata = .;        /* define a global symbol at data end */
   } >RAM AT> FLASH
 
+  /* HS-02 user assets (GIF animations) may be appended right after the firmware image by the
+     web constructor / tools/hs02-gif-studio. The firmware finds them here (Core/BSP/Fnirsi/assets_slot.c). */
+  _hs02_assets_start = LOADADDR(.data) + SIZEOF(.data);
+
   /* Uninitialized data section */
   . = ALIGN(4);
   .bss :
