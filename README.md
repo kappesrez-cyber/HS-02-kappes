@@ -24,7 +24,7 @@ A custom [IronOS](https://github.com/Ralim/IronOS) firmware for the **FNIRSI HS-
 - 🔊 **Buzzer** with adjustable volume: a chime when the tip is ready, clicks for presets and start/stop.
 - 🔌 **USB-PD voltage** selectable (9 / 12 / 15 / 20 V) through the CH224K, like the stock firmware.
 - ⬆️ **Firmware update from the menu**, using the same bootloader flag as the stock firmware (no button juggling).
-- 🎞️ **Your own GIFs**: a standby screensaver and a boot animation. A web constructor crops the GIF to the screen and puts it into a finished firmware file, no rebuild needed.
+- 🎞️ **Your own GIFs**: a standby screensaver and a boot animation. A web constructor takes a GIF or an MP4, crops it to the screen and puts it into a finished firmware file, no rebuild needed.
 - 🛡️ Proper IronOS PID control, thermal-runaway protection, motion sleep and auto power-off underneath.
 
 > [!WARNING]
@@ -154,7 +154,7 @@ The firmware can show two animations of your own:
 **Web constructor** ([`tools/hs02-gif-studio`](tools/hs02-gif-studio/README.md); with GitHub Pages enabled it runs at `https://<user>.github.io/<repo>/`):
 
 1. Pick the model and language (or load your own `.bin` from a release).
-2. Load a GIF for standby and/or boot. Drag the frame to choose the area: *Fit* shows the whole frame with borders, *Fill* crops the edges, *Free* stretches the chosen area. Speed, frame range and border colour are adjustable.
+2. Load a GIF or a short video (MP4, WebM, MOV) for standby and/or boot. For a video, pick the start, length (up to 20 s) and frames per second; the browser cuts it into frames. Drag the frame to choose the area: *Fit* shows the whole frame with borders, *Fill* crops the edges, *Free* stretches the chosen area. Speed, frame range and border colour are adjustable.
 3. The preview shows exactly what the iron will show. Press *Download firmware* and flash it as usual.
 
 No rebuild is needed: the constructor appends the GIFs to a finished `.bin` (up to ~28 KB for both; it drops frames by itself when needed). The screen keeps 4 colours per band of 4 rows (up to 80 colours per frame), so simple artwork with flat colours looks best.

@@ -5,7 +5,8 @@ A web constructor that puts your own GIFs into a finished HS-02 Modern UI firmwa
 - **standby screensaver** (*Settings → System → GIF screensaver*),
 - **boot animation** (*Settings → System → Boot GIF*).
 
-Load a GIF, drag the frame to choose the area (*Fit*: whole frame with borders, *Fill*: crop the edges, *Free*:
+Load a GIF or a short video (MP4, WebM, MOV: whatever the browser can play; pick start, length up to 20 s and frames per
+second, and the page grabs the frames through a `<video>` element), drag the frame to choose the area (*Fit*: whole frame with borders, *Fill*: crop the edges, *Free*:
 stretch any area), set speed, frame range and border colour, check the preview (decoded from the exact bytes the
 iron will get) and download the `.bin`. Everything runs in the browser.
 
@@ -17,6 +18,7 @@ iron will get) and download the `.bin`. Everything runs in the browser.
   release with *Own .bin file*. (Put builds into `firmware/<MODEL>_<LANG>.bin` to have them offered.)
 - **Command line** (CI uses it for `custom/*.gif`):
   `node cli.mjs --firmware HS02A_RU.bin --standby a.gif [--boot b.gif] [--crop contain|cover] [--speed 1] [--bg #000000] [-o out.bin]`
+  (GIF only; turn a video into one first, e.g. `ffmpeg -i clip.mp4 -vf fps=10,scale=320:-1 clip.gif`)
 
 ## Files
 
