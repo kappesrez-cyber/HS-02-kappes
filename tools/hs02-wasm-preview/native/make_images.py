@@ -5,6 +5,7 @@ usage: make_images.py <frames_dir> <docs_images_dir> <font_dir>
   frames_dir/{ru,en}/*.ppm  ->  docs_images_dir/{ru,en}/<screen>.png (framed, 3x)
                                 docs_images_dir/{ru,en}/boot.gif
                                 docs_images_dir/banner-{ru,en}.png  (1280x640 social preview)
+                                docs_images_dir/standby_gif.gif     (standby GIF screensaver)
 """
 import sys
 from pathlib import Path
@@ -75,13 +76,30 @@ def main():
         dst = out_root / lang
         dst.mkdir(parents=True, exist_ok=True)
         for ppm in sorted(src.glob("*.ppm")):
-            if ppm.stem.startswith("boot_"):
+            if ppm.stem.startswith(("boot_", "gif_")):
                 continue
             frame(load(ppm)).save(dst / f"{ppm.stem}.png", optimize=True)
         boot = [frame(load(p), transparent=False).convert("RGB") for p in sorted(src.glob("boot_*.ppm"))]
         boot += [boot[-1]] * 14  # hold the green "Ready" frame
         boot[0].save(dst / "boot.gif", save_all=True, append_images=boot[1:], duration=50, loop=0, optimize=True)
         banner(src, out_root / f"banner-{lang}.png", fonts, subtitles[lang])
+    standby_gif(frames_root / "en", out_root / "standby_gif.gif")
+
+
+def standby_gif(src: Path, out: Path):
+    """The standby GIF screensaver as the firmware draws it (frames rendered every 20 ms)."""
+    shots, durations = [], []
+    for p in sorted(src.glob("gif_*.ppm")):
+        img = load(p)
+        if shots and img.tobytes() == shots[-1].tobytes():
+            durations[-1] += 20
+        else:
+            shots.append(img)
+            durations.append(20)
+    if not shots:
+        return
+    tiles = [frame(s, transparent=False).convert("RGB") for s in shots]
+    tiles[0].save(out, save_all=True, append_images=tiles[1:], duration=durations, loop=0, optimize=True)
 
 
 if __name__ == "__main__":

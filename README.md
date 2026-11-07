@@ -24,6 +24,7 @@ A custom [IronOS](https://github.com/Ralim/IronOS) firmware for the **FNIRSI HS-
 - 🔊 **Buzzer** with adjustable volume: a chime when the tip is ready, clicks for presets and start/stop.
 - 🔌 **USB-PD voltage** selectable (9 / 12 / 15 / 20 V) through the CH224K, like the stock firmware.
 - ⬆️ **Firmware update from the menu**, using the same bootloader flag as the stock firmware (no button juggling).
+- 🎞️ **Your own GIF screensaver in standby**: drop a GIF into `custom/standby.gif` and it plays full screen when the iron sits idle (*System → GIF screensaver*). Any button or moving the iron brings the standby screen back.
 - 🛡️ Proper IronOS PID control, thermal-runaway protection, motion sleep and auto power-off underneath.
 
 > [!WARNING]
@@ -79,13 +80,13 @@ Settings
 ├── Sleep      Sleep after · Sleep temperature · Power off after · Motion sensor
 ├── Tip        Preset 1 · Preset 2 · Preset 3 · +/− step · Max power · PD voltage
 │              Calibration › · Reset calibration
-├── System     Sound · Brightness · Orientation · +/− buttons · Language
+├── System     Sound · Brightness · Orientation · +/− buttons · Language · GIF screensaver
 │              Firmware update · Factory reset · Version
 ├── Advanced   All IronOS settings (the original menu) · Diagnostics
 └── Exit
 ```
 
-Defaults: presets 300 / 330 / 360 °C, step 5 °C, sleep after 5 min at 150 °C, sound 5/10, 20 V. The menu saves and closes itself after 60 s without input.
+Defaults: presets 300 / 330 / 360 °C, step 5 °C, sleep after 5 min at 150 °C, sound 5/10, 20 V, GIF screensaver after 30 s. The menu saves and closes itself after 60 s without input.
 
 ## Flashing
 
@@ -140,6 +141,24 @@ You need a tip thermometer (an FG-100-style meter, or a fine K-type thermocouple
 4. The result is written into the stock calibration words (raw ADC counts at 140 / 240 / 340 °C), so the stock firmware uses it too.
 
 Before the first write the factory values are backed up; *Reset calibration* restores them. In a simulation with a deliberately wrong factory calibration (+32 °C at 150 °C), the error after calibration stays within 2–3 °C between 150 and 350 °C.
+
+## Your own standby GIF
+
+<p align="center"><img src="docs/images/standby_gif.gif" width="420" alt="Standby GIF screensaver"><br><sub>The bundled example (<code>custom/standby.gif</code>), as the firmware draws it.</sub></p>
+
+When the iron sits in standby untouched, the screen plays the animation from [`custom/standby.gif`](custom/standby.gif). Choose the delay in *Settings → System → GIF screensaver*: Off, 5 s, 15 s, 30 s (default), 1, 2 or 5 min.
+
+- **Any button** or **moving the iron** brings the standby screen back at once. The press that dismisses the screensaver does nothing else, so it can't start heating by accident.
+- It **never hides anything important**: it doesn't start (and stops at once) while the tip is above 50 °C, the tip is missing or shorted, or the supply is below 9 V.
+
+**Using your own GIF**
+
+1. Replace `custom/standby.gif` with your file (any size and length; transparency works).
+2. Push. GitHub Actions converts the GIF and builds the firmware; the `.bin` files are in the run's artifacts.
+   Locally: `pip install pillow`, then `python3 tools/hs02-standby-gif/gif2hs02.py --preview preview.gif` and build as usual. `preview.gif` shows exactly what the iron will show.
+3. Flash as usual.
+
+The screen keeps 4 colours per band of 4 rows (up to 80 colours per frame), so simple artwork with flat colours looks best: pixel art, logos, cartoons. The animation gets up to 24 KB of flash; if it doesn't fit, the converter drops every other frame (keeping the speed) and says so. Options (`--fit cover`, `--palette global`, `--speed 2`, `--bg '#202020'`, …) are described in [`tools/hs02-standby-gif`](tools/hs02-standby-gif/README.md).
 
 ## Building from source
 
@@ -218,6 +237,8 @@ The CH224K sink is configured by the MCU through CFG2/CFG3 (PB7/PB6), with CFG1 
 | `source/Core/Drivers/LCD.*`, `ColorBand.hpp` | ST7735 driver with per-row palettes |
 | `tools/hs02-ui-fonts/` | font generator (Inter, SIL OFL) |
 | `tools/hs02-wasm-preview/` | UI preview + screenshot renderer |
+| `custom/standby.gif`, `tools/hs02-standby-gif/` | the standby GIF and its converter |
+| `source/Core/Threads/UI/drawing/color_160x80/draw_standby_gif.cpp` | screensaver playback (logic in `logic/HomeScreen.cpp`) |
 
 Developer notes (hardware facts, gotchas): [`DEVELOPMENT.md`](DEVELOPMENT.md). Changes: [`CHANGELOG.md`](CHANGELOG.md).
 

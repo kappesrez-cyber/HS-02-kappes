@@ -92,5 +92,18 @@ int main(int argc, char **argv) {
     snprintf(name, sizeof name, "boot_%02d", f);
     dump(name);
   }
+
+  // Standby GIF screensaver: one frame every 20 ms over one loop (make_images.py assembles them).
+  {
+    const uint32_t loopMs = Hs02StandbyGif::kTotalMs, step = 20;
+    uint32_t       n      = 0;
+    for (uint32_t ms = 0; ms < loopMs && n < 500; ms += step, n++) {
+      hs02_ui_set_state((uint16_t)(ms / 10), 330, 420, 0, 200, 0, 0);
+      hs02_ui_render(5);
+      char name[32];
+      snprintf(name, sizeof name, "gif_%03u", (unsigned)n);
+      dump(name);
+    }
+  }
   return 0;
 }

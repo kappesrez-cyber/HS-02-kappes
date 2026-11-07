@@ -107,6 +107,7 @@ HS02_TEXT(kItemLanguage,  "Language", "Язык")
 HS02_TEXT(kValLangAuto,   "Auto", "Авто")
 HS02_TEXT(kValLangRu,     "Русский", "Русский")
 HS02_TEXT(kValLangEn,     "English", "English")
+HS02_TEXT(kItemGif,       "GIF screensaver", "GIF-заставка")
 
 #undef HS02_TEXT
 } // namespace Hs02UiText

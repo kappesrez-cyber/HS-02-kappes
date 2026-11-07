@@ -2,6 +2,18 @@
 
 All notable changes of **HS-02 Modern UI** (on top of [MYMDO/IronOS-FNIRSI-HS-02B](https://github.com/MYMDO/IronOS-FNIRSI-HS-02B)).
 
+## [Unreleased]
+
+### Added
+- **Standby GIF screensaver**: after a configurable idle time in standby (*System → GIF screensaver*:
+  Off / 5 s / 15 s / 30 s / 1 / 2 / 5 min, default 30 s) the screen plays `custom/standby.gif` full screen.
+  Any button or motion returns to standby (the dismissing press is swallowed); never shown while the
+  tip is above 50 °C, on a tip fault or below 9 V.
+- `tools/hs02-standby-gif/gif2hs02.py`: converts any GIF to the 2bpp framebuffer with a 4-colour
+  palette per 4-row band (RLE, XOR against frame 0, deduplicated palettes, 24 KB flash budget) and
+  writes a preview of exactly what the iron shows. CI converts `custom/standby.gif` on every build.
+- `docs/images/standby_gif.gif` rendered from the production drawing code.
+
 ## [1.0.1] — 2026-11-06
 
 ### Fixed

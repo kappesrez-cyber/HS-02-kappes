@@ -9,6 +9,72 @@
 bool showExitMenuTransition = false;
 
 #if defined(LCD_160x80)
+// ---------------------------------------------------------------- standby GIF screensaver
+// After the configured idle time (Settings > System > GIF screensaver) the standby screen plays
+// custom/standby.gif full screen. Any button or moving the iron brings the standby screen back;
+// the press that does so is swallowed (until released) so it can't start heating by accident.
+// It never covers a hot tip (> 50 C), a tip fault or a low supply voltage.
+namespace {
+constexpr uint16_t kGifDelaySeconds[] = {0, 5, 15, 30, 60, 120, 300}; // index = StandbyGif setting
+constexpr uint32_t kGifMaxTipTempC    = 50;
+bool               gifActive          = false;
+bool               gifSwallowKeys     = false;
+TickType_t         gifStart           = 0;
+TickType_t         gifViewEnterTime   = 0;
+} // namespace
+
+// Returns true when the screensaver drew this frame; may clear `buttons` (swallowed press).
+static bool standbyGifService(ButtonState &buttons, const guiContext *cxt, uint32_t tipTempC, bool undervoltage) {
+  if (gifViewEnterTime != cxt->viewEnterTime) { // (re)entered standby: start fresh
+    gifViewEnterTime = cxt->viewEnterTime;
+    gifActive        = false;
+    gifSwallowKeys   = false;
+  }
+  if (gifSwallowKeys) {
+    if (buttons == BUTTON_NONE && !getButtonA() && !getButtonB() && !getButtonOK()) {
+      gifSwallowKeys = false;
+    }
+    buttons = BUTTON_NONE;
+  }
+
+  const uint16_t   setting = getSettingValue(SettingsOptions::StandbyGif);
+  const TickType_t now     = xTaskGetTickCount();
+  const bool       allowed = setting > 0 && setting < sizeof(kGifDelaySeconds) / sizeof(kGifDelaySeconds[0]) && !undervoltage
+                       && getInputVoltageX10(getSettingValue(SettingsOptions::VoltageDiv), 0) >= 90 && tipTempC < kGifMaxTipTempC
+                       && !isTipDisconnected() && !isTipShorted();
+
+  if (gifActive) {
+    const bool pressed = lastButtonTime > gifStart;
+    if (!allowed || pressed || lastMovementTime > gifStart) {
+      gifActive = false;
+      if (pressed) {
+        gifSwallowKeys = true;
+        buttons        = BUTTON_NONE;
+      }
+      return false;
+    }
+    ui_draw_standby_gif(now - gifStart);
+    return true;
+  }
+  if (!allowed) {
+    return false;
+  }
+  TickType_t lastActivity = cxt->viewEnterTime;
+  if (lastButtonTime > lastActivity) {
+    lastActivity = lastButtonTime;
+  }
+  if (lastMovementTime > lastActivity) {
+    lastActivity = lastMovementTime;
+  }
+  if (now - lastActivity < (TickType_t)kGifDelaySeconds[setting] * TICKS_SECOND) {
+    return false;
+  }
+  gifActive = true;
+  gifStart  = now;
+  ui_draw_standby_gif(0);
+  return true;
+}
+
 // HS-02: FNIRSI-style standby. OK = start heating, hold OK (or both +/-) = settings,
 // +/- = change the target (held: repeat). The heater is always off here.
 static OperatingMode handleHomeButtonsHS02(const ButtonState buttons, guiContext *cxt) {
@@ -105,7 +171,7 @@ OperatingMode handleHomeButtons(const ButtonState buttons, guiContext *cxt) {
   return OperatingMode::HomeScreen;
 }
 
-OperatingMode drawHomeScreen(const ButtonState buttons, guiContext *cxt) {
+OperatingMode drawHomeScreen(ButtonState buttons, guiContext *cxt) {
 
   currentTempTargetDegC       = 0; // ensure tip is off
 #if defined(LCD_160x80)
@@ -116,6 +182,9 @@ OperatingMode drawHomeScreen(const ButtonState buttons, guiContext *cxt) {
   uint32_t       tipTemp      = TipThermoModel::getTipInC();
 
 #if defined(LCD_160x80)
+  if (standbyGifService(buttons, cxt, tipTemp, undervoltage)) {
+    return OperatingMode::HomeScreen; // screensaver on screen: buttons only dismiss it
+  }
   if (undervoltage) {
     ui_draw_warning_undervoltage_idle();
   } else {

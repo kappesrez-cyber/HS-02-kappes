@@ -84,8 +84,9 @@ enum SettingsOptions {
   BuzzerVolume                   = 59, // 0 = off, 1..10
   PDVoltage                      = 60, // Requested USB-PD voltage: 0 = 9V, 1 = 12V, 2 = 15V, 3 = 20V
   HS02UiLanguage                 = 61, // Colour UI language: 0 = auto (firmware build), 1 = Russian, 2 = English
+  StandbyGif                     = 62, // GIF screensaver in standby: 0 = off, 1..6 = after 5 s / 15 s / 30 s / 1 / 2 / 5 min
   //
-  SettingsOptionsLength = 62, // End marker
+  SettingsOptionsLength = 63, // End marker
 };
 
 typedef enum {

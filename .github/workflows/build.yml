@@ -28,10 +28,14 @@ jobs:
     steps:
       - name: Install toolchain
         run: |
-          apk add --no-cache gcc-arm-none-eabi g++-arm-none-eabi newlib-arm-none-eabi findutils python3 py3-pip make git bash
+          apk add --no-cache gcc-arm-none-eabi g++-arm-none-eabi newlib-arm-none-eabi findutils python3 py3-pip py3-pillow make git bash
           python3 -m pip install --break-system-packages bdflib
 
       - uses: actions/checkout@v4
+
+      - name: Convert the standby GIF (custom/standby.gif)
+        # Replacing custom/standby.gif is all it takes to get your own screensaver into the build.
+        run: python3 tools/hs02-standby-gif/gif2hs02.py custom/standby.gif
 
       - name: Build
         run: |
