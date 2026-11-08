@@ -109,6 +109,7 @@ HS02_TEXT(kValLangRu,     "Русский", "Русский")
 HS02_TEXT(kValLangEn,     "English", "English")
 HS02_TEXT(kItemGif,       "GIF screensaver", "GIF-заставка")
 HS02_TEXT(kItemBootGif,   "Boot GIF", "GIF при включении")
+HS02_TEXT(kItemInvert,    "Invert colours", "Инверсия цвета")
 HS02_TEXT(kValOn,         "On", "Вкл")
 
 #undef HS02_TEXT
