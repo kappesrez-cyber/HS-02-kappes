@@ -80,7 +80,7 @@ Settings
 ├── Sleep      Sleep after · Sleep temperature · Power off after · Motion sensor
 ├── Tip        Preset 1 · Preset 2 · Preset 3 · +/− step · Max power · PD voltage
 │              Calibration › · Reset calibration
-├── System     Sound · Brightness · Orientation · +/− buttons · Language · GIF screensaver · Boot GIF
+├── System     Sound · Brightness · Orientation · +/− buttons · Language · GIF screensaver · Boot GIF · Invert colours
 │              Firmware update · Factory reset · Version
 ├── Advanced   All IronOS settings (the original menu) · Diagnostics
 └── Exit

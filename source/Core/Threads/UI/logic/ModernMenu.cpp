@@ -2,7 +2,8 @@
 //   Settings ─┬─ Sleep    : sleep after, sleep temperature, power off after, motion sensor
 //             ├─ Tip      : presets 1-3, +/- step, max power, USB-PD voltage
 //             ├─ System   : sound, brightness, orientation, +/- buttons, language,
-//             │             GIF screensaver, boot GIF, firmware update, factory reset, version
+//             │             GIF screensaver, boot GIF, colour inversion, firmware update,
+//             │             factory reset, version
 //             ├─ Advanced : the full IronOS settings menu, diagnostics
 //             └─ Exit
 // Controls: +/- move (held: repeat), OK = open / edit / confirm, hold OK = back.
@@ -75,6 +76,8 @@ const Item kSystemItems[] = {
     SETTING(kItemLanguage, HS02UiLanguage, F_LANG, 0, 2, 1),
     SETTING(kItemGif, StandbyGif, F_GIF, 0, 6, 1),
     SETTING(kItemBootGif, BootGif, F_ONOFF, 0, 1, 1),
+    // Hidden before: a value left on by an older firmware inverted the whole screen with no way back.
+    SETTING(kItemInvert, DisplayInversion, F_ONOFF, 0, 1, 1),
     {kItemUpdate, Kind::Action, A_UPDATE, F_NONE, 0, 0, 0, 0},
     {kItemReset, Kind::Action, A_RESET, F_NONE, 0, 0, 0, 0},
     {kItemVersion, Kind::Info, 0, F_NONE, 0, 0, 0, 0},
@@ -212,6 +215,9 @@ void applyLive(const Item &item) {
   switch ((SettingsOptions)item.arg) {
   case SettingsOptions::DisplayBrightness:
     Display::setBrightness(getSettingValue(SettingsOptions::DisplayBrightness));
+    break;
+  case SettingsOptions::DisplayInversion:
+    Display::setInverseDisplay(getSettingValue(SettingsOptions::DisplayInversion));
     break;
   case SettingsOptions::BuzzerVolume:
     beep(80); // preview the new loudness

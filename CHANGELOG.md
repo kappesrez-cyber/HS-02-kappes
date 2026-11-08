@@ -15,6 +15,8 @@ All notable changes of **HS-02 Modern UI** (on top of [MYMDO/IronOS-FNIRSI-HS-02
   patched `.bin`. The GIFs are appended after the firmware image as a CRC-checked container (4 colours per 4-row band,
   RLE, XOR against frame 0); the firmware finds it through the `HS02SLOT` record and the `_hs02_assets_start` linker
   symbol. `cli.mjs` does the same from the command line; CI adds `custom/standby.gif` / `custom/boot.gif` to releases.
+- *System → Invert colours*. The colour inversion setting was hidden from the colour menu, so a value left on by an
+  older firmware turned the whole screen (and the GIFs) into a negative with no way to switch it off.
 
 ## [1.0.1] — 2026-11-06
 
